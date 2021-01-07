@@ -199,10 +199,10 @@ app.layout = dbc.Container([
                    'результатов моделирования.'),
         ], ),
         dbc.Col([
-            html.A('исходный код данного',
-                   href="https://github.com/made-hw/ML_HW4/blob/master/Solution_and_presenattion.ipynb"),
+            html.A('исходный код данного демо',
+                   href="https://github.com/made-hw/ML_HW4/tree/master/demo"),
             html.Br(),
-            html.A('код разработки модели', href="https://github.com/made-hw/ML_HW4/tree/master/demo"),
+            html.A('код разработки модели', href="https://github.com/made-hw/ML_HW4/blob/master/Solution_and_presenattion.ipynb"),
         ], width=3),
     ]),
     dbc.Row([
@@ -363,4 +363,4 @@ def update_calc(data1, *data2):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=False)
