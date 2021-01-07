@@ -47,57 +47,82 @@ class Binning:
 with open(BASE_PATH.joinpath('bins_ip.pkl'), 'rb') as f:
     bins_ip = pickle.load(f)
 
+with open(BASE_PATH.joinpath('bins_ul.pkl'), 'rb') as f:
+    bins_ul = pickle.load(f)
+
 ip_factors_list = [
     {'label': 'Возраст организации (ОГРН)', 'value': 'ogrn_age', 'gini': 0.345, 'default': 76},
-    {'label': 'Возраст организации (юр. адрес)', 'value': 'adr_actual_age', 'gini': 0.125, 'default': 27},
+    {'label': 'Возраст организации (юр. адрес)', 'value': 'adr_actual_age_ip', 'gini': 0.125, 'default': 27},
     {'label': 'Капитал', 'value': 'ul_capital_sum', 'gini': 0.080, 'default': 10000},
-    {'label': 'Кол-во акционеров', 'value': 'ul_founders_cnt', 'gini': 0.144, 'default': 2}]
+    {'label': 'Кол-во акционеров', 'value': 'ul_founders_cnt_ip', 'gini': 0.144, 'default': 2}]
 
+ul_factors_list = [
+    {'label': 'Чистая прибыль', 'value': 'ar_net_profit', 'gini': 0.304, 'default': 5500000},
+    {'label': 'Денежные средства и денежные эквиваленты', 'value': 'ab_cash_and_securities', 'gini': 0.283,
+     'default': 172000.0},
+    # {'label': 'Долгосрочный обязательства', 'value': 'ab_long_term_liabilities', 'gini': 0.024, 'default': 8000000},
+    {'label': 'Срок ведения бизнеса', 'value': 'bus_age', 'gini': 0.194, 'default': 62},
+    {'label': 'Срок с момента регистрации юридического адреса', 'value': 'adr_actual_age_ul', 'gini': 0.060,
+     'default': 32},
+    {'label': 'Количество акционеров', 'value': 'ul_founders_cnt_ul', 'gini': 0.146, 'default': 2},
+    {'label': 'Выручка на дебиторскую задолженность', 'value': 'r_1_a', 'gini': 0.191, 'default': 611},
+    {'label': 'Себестоимотсь на оборотные активы)', 'value': 'r_2_a', 'gini': 0.067, 'default': 38},
+    # {'label': 'Комм. на общие расходы', 'value': 'r_3_a', 'gini': 0.026, 'default': 0},
+    {'label': 'Выручка на активы', 'value': 'r_6_a', 'gini': 0.121, 'default': 4},
+    {'label': 'Задолженность на активы', 'value': 'r_19_a', 'gini': 0.132, 'default': 4}]
+
+factors_list = [x['value'] for x in ip_factors_list + ul_factors_list]
 ip_df = pd.DataFrame(
     data=[[x['label'], x['gini']] for x in ip_factors_list],
     columns=['factor_name', 'gini_score'])
+ip_df['gini_score'] = ip_df.gini_score.apply(lambda x: round(x * 100, 2))
 
-ip_forms_el = []
+ul_df = pd.DataFrame(
+    data=[[x['label'], x['gini']] for x in ul_factors_list],
+    columns=['factor_name', 'gini_score'])
+ul_df['gini_score'] = ul_df.gini_score.apply(lambda x: round(x * 100, 2))
+
+forms_el = []
 for i in ip_factors_list:
-    ip_forms_el.append(
-        dbc.FormGroup(
-            [
-                dbc.Label(i['label']),
-                dbc.Col(dbc.Input(type='number', id=i['value'], placeholder=i['default'], value=i['default'])),
-            ], row=True,
-        )
+    forms_el.append(
+        html.Div(
+            dbc.FormGroup(
+                [
+                    dbc.Label(i['label']),
+                    dbc.Col(dbc.Input(type='number', id=i['value'] + '2', placeholder=i['default'], value=i['default'])),
+                ], row=True
+            ), id=i['value'] + '1')
     )
-ip_form = dbc.Form(ip_forms_el)
+
+for i in ul_factors_list:
+    forms_el.append(
+        html.Div(
+            dbc.FormGroup(
+                [
+                    dbc.Label(i['label']),
+                    dbc.Col(dbc.Input(type='number', id=i['value'] + '2', placeholder=i['default'], value=i['default'])),
+                ], row=True
+            ), id=i['value'] + '1')
+    )
+form = dbc.Form(forms_el)
 
 
 def data_bars(df, column):
-    n_bins = 100
-    bounds = [i * (1.0 / n_bins) for i in range(n_bins + 1)]
-    ranges = [
-        ((1 - 0) * i) + 0
-        for i in bounds
-    ]
     styles = []
-    for i in range(1, len(bounds)):
-        min_bound = ranges[i - 1]
-        max_bound = ranges[i]
-        max_bound_percentage = bounds[i] * 100
+    for i in range(1, 101):
         styles.append({
             'if': {
-                'filter_query': (
-                        '{{{column}}} >= {min_bound}' +
-                        (' && {{{column}}} < {max_bound}' if (i < len(bounds) - 1) else '')
-                ).format(column=column, min_bound=min_bound, max_bound=max_bound),
+                'filter_query': f'{{{column}}} >= {i} && {{{column}}} < {i + 1}',
                 'column_id': column
             },
             'background': (
-                """
+                f"""
                     linear-gradient(90deg,
                     #96dbfa 0%,
-                    #96dbfa {max_bound_percentage}%,
-                    white {max_bound_percentage}%,
+                    #96dbfa {i}%,
+                    white {i}%,
                     white 100%)
-                """.format(max_bound_percentage=max_bound_percentage)
+                """
             ),
             'paddingBottom': 2,
             'paddingTop': 2
@@ -121,12 +146,14 @@ def one_bin_barchart(bining, size=5):
         y=bins_counts,
         yaxis='y1',
         name="Кол-во набл.",
+        marker=dict(color='rgba(30, 174, 219, 0.5)'),
     )
     trace2 = go.Scatter(
         x=total_bins,
         y=bins_dr,
         yaxis='y2',
         name="Доля дефолтов",
+        marker=dict(color='rgba(30, 174, 219, 1)'),
     )
 
     data = [trace1, trace2]
@@ -172,7 +199,8 @@ app.layout = dbc.Container([
                    'результатов моделирования.'),
         ], ),
         dbc.Col([
-            html.A('исходный код данного', href="https://github.com/made-hw/ML_HW4/blob/master/Solution_and_presenattion.ipynb"),
+            html.A('исходный код данного',
+                   href="https://github.com/made-hw/ML_HW4/blob/master/Solution_and_presenattion.ipynb"),
             html.Br(),
             html.A('код разработки модели', href="https://github.com/made-hw/ML_HW4/tree/master/demo"),
         ], width=3),
@@ -229,7 +257,6 @@ app.layout = dbc.Container([
                                     {'name': 'Фактор', 'id': 'factor_name'},
                                     {'name': 'Gini', 'id': 'gini_score'},
                                 ],
-
                                 data=ip_df.to_dict('records'),
                                 style_data_conditional=data_bars(ip_df, 'gini_score'),
                                 style_as_list_view=True,
@@ -257,7 +284,7 @@ app.layout = dbc.Container([
                     ]),
                 ]),
                 dcc.Tab(label='Скоринг', children=[
-                    ip_form, dbc.Alert(f"Вероятность дефолта {7}%", color="info", id='alert'),
+                    html.Div(form, id='score_tab'), dbc.Alert(f"Вероятность дефолта {7}%", color="info", id='alert'),
                 ]),
             ]),
         ], width=12),
@@ -277,46 +304,63 @@ app.layout = dbc.Container([
         Output("table", "style_data_conditional"),
         Output("factors", "options"),
         Output("factors", "value"),
+        *[Output(x + '1', 'style') for x in factors_list],
+        *[Output(x + '2', 'value') for x in factors_list],
     ],
     Input("cl_type", "value"),
 )
 def update_text(data):
     if data == 0:
-        return '40.0%', '10.2', ip_df.to_dict('records'), data_bars(ip_df, 'gini_score'), [
-            {'label': x['label'], 'value': x['value']} for x in ip_factors_list], ip_factors_list[0]['value']
+        return ('40.0%', '10.2%', ip_df.to_dict('records'), data_bars(ip_df, 'gini_score'), [
+            {'label': x['label'], 'value': x['value']} for x in ip_factors_list], ip_factors_list[0]['value'], \
+                *[{'display': 'block'} if x in [x['value'] for x in ip_factors_list] else {'display': 'none'} for x in
+                  factors_list], *[0 if x not in [x['value'] for x in ip_factors_list] else [y['default'] for y in ip_factors_list if y['value'] == x][0] for x in
+                  factors_list])
     else:
-        return '33', '44', ip_df.to_dict('records'), data_bars(ip_df, 'gini_score'), [
-            {'label': x['label'], 'value': x['value']} for x in ip_factors_list], ip_factors_list[0]['value']
+        return ('42.1%', '4.7%', ul_df.to_dict('records'), data_bars(ul_df, 'gini_score'), [
+            {'label': x['label'], 'value': x['value']} for x in ul_factors_list], ul_factors_list[0]['value'], \
+                *[{'display': 'block'} if x in [x['value'] for x in ul_factors_list] else {'display': 'none'} for x in
+                  factors_list], *[0 if x not in [x['value'] for x in ul_factors_list] else [y['default'] for y in ul_factors_list if y['value'] == x][0] for x in
+                  factors_list])
 
 
 @app.callback(
     Output("matplotlib-graph", "figure"),
     [Input("cl_type", "value"), Input("factors", "value"), ]
 )
-def update_graph(data1, data2,):
+def update_graph(data1, data2, ):
     if data1 == 0:
         return one_bin_barchart([x for x in bins_ip if x._name == data2][0], size=5)
     else:
-        return one_bin_barchart([x for x in bins_ip if x._name == data2][0], size=5)
+        return one_bin_barchart([x for x in bins_ul if x._name == data2][0], size=5)
 
 
 @app.callback(
     Output("alert", "children"),
     [
-        Input("cl_type", "value"), *[Input(x['value'], 'value') for x in ip_factors_list]
+        Input("cl_type", "value"), *[Input(x + '2', 'value') for x in factors_list]
     ]
 )
 def update_calc(data1, *data2):
     if data1 == 0:
-        data2 = [0 if x is None else x for x in data2]
-        take_bin = lambda name: [x for x in bins_ip if x._name == name][0]
-        take_woe = lambda v, name: take_bin(name)._woes[[(i, x) for (i, x) in enumerate(take_bin(name)._gaps) if x[0] <= v < x[1]][0][0]]
-        lr = np.sum([x[0] * x[1] for x in zip([take_woe(x[1], x[0]['value']) for x in zip(ip_factors_list, data2)], [-0.94890533, -0.65224689, -0.86978949, -0.96749802])])
+        data2 = [0 if x is None else x for x in data2][:4]
+        take_bin = lambda name: [x for x in bins_ip if x._name == name or x._name + '_ip' == name][0]
+        take_woe = lambda v, name: take_bin(name)._woes[
+            [(i, x) for (i, x) in enumerate(take_bin(name)._gaps) if x[0] <= v < x[1]][0][0]]
+        lr = np.sum([x[0] * x[1] for x in zip([take_woe(x[1], x[0]['value']) for x in zip(ip_factors_list, data2)],
+                                              [-0.94890533, -0.65224689, -0.86978949, -0.96749802])])
         lr += -2.18364137
         return f'Вероятность дефолта {round(np.exp(lr) / (1 + np.exp(lr)) * 100, 2)} %'
     else:
-        return one_bin_barchart([x for x in bins_ip if x._name == data2][0], size=5)
+        take_bin = lambda name: [x for x in bins_ul if x._name == name or x._name + '_ul' == name][0]
+        take_woe = lambda v, name: take_bin(name)._woes[
+            [(i, x) for (i, x) in enumerate(take_bin(name)._gaps) if x[0] <= v < x[1]][0][0]]
+        lr = np.sum([x[0] * x[1] for x in zip([take_woe(x[1], x[0]['value']) for x in zip(ul_factors_list, data2)],
+                                              [-0.63756363, -0.47038324, -0.58163822, -1.11727878, -0.47083305,
+                                               -0.31323299, 0.22422398, -0.27440618, -0.55363363])])
+        lr += -3.0058736
+        return f'Вероятность дефолта {round(np.exp(lr) / (1 + np.exp(lr)) * 100, 2)} %'
 
 
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    app.run_server(debug=True)
