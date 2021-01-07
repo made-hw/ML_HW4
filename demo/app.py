@@ -330,9 +330,9 @@ def update_text(data):
 )
 def update_graph(data1, data2, ):
     if data1 == 0:
-        return one_bin_barchart([x for x in bins_ip if x._name == data2][0], size=5)
+        return one_bin_barchart([x for x in bins_ip if x._name == data2 or x._name + '_ip' == data2][0], size=5)
     else:
-        return one_bin_barchart([x for x in bins_ul if x._name == data2][0], size=5)
+        return one_bin_barchart([x for x in bins_ul if x._name == data2 or x._name + '_ul' == data2][0], size=5)
 
 
 @app.callback(
